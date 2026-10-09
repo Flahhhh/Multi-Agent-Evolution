@@ -1,6 +1,7 @@
 import gymnasium as gym
 from gymnasium.wrappers import TimeLimit
 
+gym.logger.min_level = 40
 gym.register(
     "Flah/MABattle-v0",
     entry_point="MABattle.MABattleV0.env:MABattleEnv",

@@ -1,15 +1,24 @@
-from .const import BOARD_SHAPE, BOARD_SIZE, NUM_LINES, ROW_RANGE, COL_RANGE, UNIT_POSSIBLE_ACTIONS, \
-    CAPTURE_REWARD, WIN_REWARD
+from enum import Enum
+
+from .config import EnvCfg
 from .units import Unit
 
 import numpy as np
+
+
+class GameResults(Enum):
+    Continue = 0.0
+    Draw = 0.0
+    Win = 100.0
+    Lose = -100.0
 
 
 class Board:
     units: dict[int: dict[tuple[int, int]: Unit]]
     turn: int
 
-    def __init__(self, use_flip=True):
+    def __init__(self, env_cfg: EnvCfg, use_flip=True):
+        self.cfg = env_cfg
         self.reset()
 
         self.use_flip = use_flip
@@ -23,74 +32,81 @@ class Board:
         for p, units in self.units.items():
             units_ = {}
             for pos, unit in units.items():
-                new_pos = (BOARD_SHAPE[0] - pos[0] - 1, BOARD_SHAPE[1] - pos[1] - 1)
+                new_pos = (self.cfg.board_size[0] - pos[0] - 1, self.cfg.board_size[1] - pos[1] - 1)
                 unit.pos = new_pos
                 units_[new_pos] = unit
             self.units[p] = units_
 
     def _spawn_units(self):
         self.units = {1: {}, -1: {}}
-        line_idxs = list(range(BOARD_SHAPE[0]))
-        row_idxs = list(range(BOARD_SHAPE[1]))
+        line_idxs = list(range(self.cfg.board_size[0]))
+        row_idxs = list(range(self.cfg.board_size[1]))
 
-        for i in range(NUM_LINES):
-            for j in range(BOARD_SHAPE[1]):
+        for i in range(self.cfg.num_lines):
+            for j in range(self.cfg.board_size[1]):
                 pos = (line_idxs[i], j)
-                idx = i * BOARD_SIZE[1] + j + 1
+                idx = i * self.cfg.board_size[1] + j  # + 1
                 unit = Unit(pos, 1, idx)
                 self.units[1][pos] = unit
 
-        for i in range(NUM_LINES):
-            for j in range(BOARD_SHAPE[1]):
+        for i in range(self.cfg.num_lines):
+            for j in range(self.cfg.board_size[1]):
                 pos = (line_idxs[::-1][i], row_idxs[::-1][j])
-                idx = i * BOARD_SIZE[1] + j + 1
+                idx = i * self.cfg.board_size[1] + j  # + 1
+                # print(-1, idx)
                 unit = Unit(pos, -1, idx)
                 self.units[-1][pos] = unit
 
-    def _validate_move(self, move: np.ndarray, unit: Unit) -> bool:
-        new_pos = unit.pos + move
+    def _validate_move(self, move: list, unit: Unit) -> bool:
+        new_pos = (unit.pos[0] + move[0], unit.pos[1] + move[1])
+        #new_pos = unit.pos + move
 
-        return new_pos[0] in ROW_RANGE and new_pos[1] in COL_RANGE
+        return new_pos[0] in self.cfg.row_range and new_pos[1] in self.cfg.col_range
 
     def get_possible_actions(self) -> dict[int: list[int]]:
         moves = {}
         for _, unit in self.units[self.turn].items():
             moves[unit.idx] = []
-            for move_idx in range(len(UNIT_POSSIBLE_ACTIONS)):
-                if self._validate_move(UNIT_POSSIBLE_ACTIONS[move_idx], unit):
+            for move_idx in range(len(self.cfg.unit_possible_actions)):
+                if self._validate_move(self.cfg.unit_possible_actions[move_idx], unit):
                     moves[unit.idx].append(move_idx)
 
         return moves
 
-    def get_alive(self):
+    def get_alive(self) -> list[int]:
         r = []
         for _, unit in self.units[self.turn].items():
             r.append(unit.idx)
 
         return r
 
+    def get_num_opponents(self):
+        return len(self.units[-self.turn])
 
+    def _apply_action(self, action: int, unit: Unit) -> tuple[int, int | None]:
+        c = None
 
-    def _apply_action(self, action: int, unit: Unit) -> int:
         pos = unit.pos
-        new_pos = unit.pos + UNIT_POSSIBLE_ACTIONS[action]
+        new_pos = (unit.pos[0] + self.cfg.unit_possible_actions[action][0], unit.pos[1] + self.cfg.unit_possible_actions[action][1])
+        #new_pos = unit.pos + self.cfg.unit_possible_actions[action]
 
         cur_units = self.units[self.turn]
         opp_units = self.units[-self.turn]
 
         if action == 0 or cur_units.get(tuple(new_pos), None) is not None:
-            return 0
+            return 0, c
 
         r = 0
         if opp_units.get(tuple(new_pos), None) is not None:
+            c = opp_units[tuple(new_pos)].idx
             opp_units.__delitem__(tuple(new_pos))
-            r = CAPTURE_REWARD
+            r = self.cfg.capture_reward
 
         cur_units.__delitem__(tuple(pos))
         cur_units[tuple(new_pos)] = unit
         unit.pos = new_pos
 
-        return r
+        return r, c
 
     def _get_done(self):
         return len(self.units[-self.turn]) == 0
@@ -99,20 +115,27 @@ class Board:
         possible_move_sets = self.get_possible_actions()
         units = self.units[self.turn]
         r = []
+        c = []
 
         for pos in list(units.keys()):
             unit = units[pos]
             idx = unit.idx
             action = actions[idx]
             if action not in possible_move_sets[idx]:
-                raise Exception(f"MOVE IDX: {action} | UNIT IDX: {unit.idx} | NEW POS: {unit.pos+UNIT_POSSIBLE_ACTIONS[action]} | LEGALS: {possible_move_sets[idx]} | VALIDATION: {action in possible_move_sets[idx]} | UNITS: {self.units[1]} | [ERROR]: Invalid move({idx, action})")
+                raise Exception(
+                    f"MOVE IDX: {action} | UNIT IDX: {unit.idx} | NEW POS: {unit.pos + self.cfg.unit_possible_actions[action]} | LEGALS: {possible_move_sets[idx]} | VALIDATION: {action in possible_move_sets[idx]} | UNITS: {self.units[1]} | [ERROR]: Invalid move({idx, action})")
 
-            r.append(self._apply_action(action, unit))
+            r_, c_ = self._apply_action(action, unit)
+            r.append(r_)
+            if c_ is not None:
+                c.append(c_)
+            # r.append(self._apply_action(action, unit))
 
         d = self._get_done()
+        pdv_units = self.units
 
         self.turn *= -1
         if self.use_flip:
             self.flip()
 
-        return r, d
+        return r, d, c, pdv_units

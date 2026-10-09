@@ -1,7 +1,8 @@
-gymnasium
-matplotlib
-torch
-torchrl
-numpy
+gymnasium~=1.2.2
+matplotlib~=3.10.7
+torch~=2.9.1+cu128
+torchrl~=0.10.1
+numpy~=2.2.6
 pygad
-pillow
+pillow~=12.0.0
+tqdm~=4.67.1

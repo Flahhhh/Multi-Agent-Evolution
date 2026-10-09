@@ -1,9 +1,17 @@
 import gymnasium as gym
-from gymnasium.wrappers import NumpyToTorch
+import torch
+from gymnasium.core import RenderFrame, WrapperObsType, WrapperActType, ObsType
 
-from const import device, env_name, num_games
+from const import env_name
 
-def make_env():
-    env = NumpyToTorch(gym.make(env_name))
+
+class TorchWrapper(gym.ObservationWrapper):
+    def observation(self, observation: ObsType) -> WrapperObsType:
+        return torch.from_numpy(observation)
+
+
+def make_env(env_cfg=None):
+    env = TorchWrapper(gym.make(env_name, env_cfg=env_cfg))
+    #env = NumpyToTorch(gym.make(env_name))
 
     return env

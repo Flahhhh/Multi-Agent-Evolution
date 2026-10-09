@@ -1,32 +1,36 @@
 import torch
 import random
 
-from MABattle.MABattleV0 import UNIT_POSSIBLE_ACTIONS
 
 class RandomAgent:
     def __init__(self, num_agents):
         self.num_agents = num_agents
 
     def get_actions(self, _, legals):
-        #actions = torch.full([NUM_AGENTS], 0)
         actions = [random.choice(legals[i]) for i in range(self.num_agents)]
-
-        #mask = legals.sum(1)
-        #for idx in range(NUM_AGENTS):
-        #    if not mask[idx]: continue
-        #    actions[idx] = random.choice(torch.argwhere(legals[idx]))
 
         return actions
 
+
 class GreedyAgent:
-    def __init__(self, state, legals):
+    def __init__(self, num_agents, state_shape, unit_possible_actions, team):
+        self.num_agents = num_agents
+        self.state_shape = state_shape
+        self.unit_possible_actions = unit_possible_actions
 
-        actions = []
+        self.team = team
 
+    def get_actions(self, state, legals, board_dict):
 
-        for i in range(...):
-            max_j = 0
-            rewards = []
+        state = state.reshape(self.state_shape)
+        actions = [0] * self.num_agents
 
-            for j in range(len(legals[i])):
-                 shift_i, shift_j = UNIT_POSSIBLE_ACTIONS[legals[i][j]]
+        for agent_idx, pos in board_dict[self.team].items():
+            for action in legals[agent_idx]:
+                step = self.unit_possible_actions[action]
+                new_pos = (pos[0] + step[0], pos[1] + step[1])
+                if new_pos in board_dict[-self.team]:
+                    actions[agent_idx] = action
+                    break
+            else:
+                actions[agent_idx] = random.choice(legals[agent_idx])

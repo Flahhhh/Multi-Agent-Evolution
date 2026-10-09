@@ -1,8 +1,6 @@
 import gymnasium as gym
 import torch
-from gymnasium.core import RenderFrame, WrapperObsType, WrapperActType, ObsType
-
-from const import env_name
+from gymnasium.core import WrapperObsType, ObsType
 
 
 class TorchWrapper(gym.ObservationWrapper):
@@ -11,7 +9,6 @@ class TorchWrapper(gym.ObservationWrapper):
 
 
 def make_env(env_cfg=None):
-    env = TorchWrapper(gym.make(env_name, env_cfg=env_cfg))
-    #env = NumpyToTorch(gym.make(env_name))
+    env = TorchWrapper(gym.make("Flah/MABattle-v0", env_cfg=env_cfg))
 
     return env

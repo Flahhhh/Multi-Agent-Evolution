@@ -1,13 +1,14 @@
 import datetime
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from tqdm import tqdm
 from torch.utils.tensorboard.writer import SummaryWriter
 from gymnasium import Env
 
 from MABattle.MABattleV0 import EnvCfg
 from MABattle.utils import make_env
+from utils import save_json
 
 
 class BaseAgent(ABC):
@@ -26,7 +27,6 @@ class BaseAgent(ABC):
 
         self.root_dir = f"logs/{str(datetime.datetime.now().strftime('%Y-%m-%d %H-%M'))}"
 
-        print(self.root_dir)
         if not os.path.isdir(self.root_dir):
             os.makedirs(self.root_dir)
 
@@ -48,6 +48,8 @@ class BaseAgent(ABC):
             self.__setattr__(attr, val)
 
     def train(self, epochs: int):
+        save_json(asdict(self.env_cfg), os.path.join(self.root_dir, "env_config.json"))
+        print(self.root_dir)
         for epoch in tqdm(range(epochs)):
             metrics = self.train_epoch()
             self.callback(metrics, epoch)

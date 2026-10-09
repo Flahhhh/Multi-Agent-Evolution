@@ -4,8 +4,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class DQNCfg:
     name: str = "DQN"
-    target: str = "I"
-    multi_agent_mode: str = "Independent"  # Independent | Join | Decomposition
+    multi_agent_mode: str = "Decomposition"  # Independent | Join | Decomposition
     opponent_type: str = "Random"
     loss: str = "HuberLoss"
 
@@ -27,8 +26,8 @@ class DQNCfg:
     target_update_freq: int = 256
 
     num_epoch_steps: int = 1
-    num_step_game: int = 8
-    num_step_train: int = 2
+    num_step_game: int = 1
+    num_step_train: int = 1
 
     exploration_strategy: str = "Noisy Networks"
     sigma_init: float = 0.017

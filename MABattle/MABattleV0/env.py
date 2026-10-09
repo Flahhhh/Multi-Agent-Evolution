@@ -1,11 +1,9 @@
-from dataclasses import dataclass
-from typing import List, Optional, Any
+from typing import Optional, Any
 from PIL import Image
+
 import torch
 import numpy as np
-
 import gymnasium as gym
-from gymnasium.core import ObsType
 
 from .board import Board, GameResults
 from .config import EnvCfg
@@ -16,7 +14,7 @@ class MABattleEnv(gym.Env):
 
     def __init__(self, env_cfg: EnvCfg = None, render_mode: Optional[str] = None):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.cfg = EnvCfg if env_cfg is None else env_cfg
+        self.cfg = EnvCfg() if env_cfg is None else env_cfg
 
         self.flatten_observations = True
         self.is_bool_legals = False
@@ -35,12 +33,13 @@ class MABattleEnv(gym.Env):
         self._board = Board(env_cfg)
 
         self.reward_type = "raw"
-        self.max_c = 100
 
     def reset(self, *, seed: int | None = None,
               options: dict[str, Any] | None = None, ):
         super().reset(seed=seed)
         self._board.reset()
+
+        #print(self._board.units)
         self.c = 0
 
         state = self.get_state()
@@ -50,16 +49,16 @@ class MABattleEnv(gym.Env):
         info = {
             "local_dones": self._get_dones(),
             "legals": legals,
-            "alive_agents": alive_agents
+            "alive_agents": alive_agents,
+            "board_dict": self._board.units,
+            "to_play": self.to_play()
         }
 
         return state, info
 
     def step(self, actions) -> tuple:
         alive_agents = self._board.get_alive()
-        turn = self.to_play()
 
-        # print(alive_agents, actions)
         rewards, done, captured, pdv_units = self._board.step({idx: actions[idx] for idx in alive_agents})
         if self.reward_type == "mean":
             reward = sum(rewards) / len(rewards)
@@ -75,22 +74,21 @@ class MABattleEnv(gym.Env):
         state = self.get_state()
 
         self.c += 1
-        truncated = self.c >= self.max_c
+        truncated = self.c >= self.cfg.max_steps
         info = {
             "local_dones": self._get_dones(),
             "legals": self.get_legals(),
             "alive_agents": self._board.get_alive(),
             "opponent_reward": opponent_reward,
             "raw_reward": torch.tensor(rewards),
-            "pdv_state": torch.FloatTensor(self.get_state(units=pdv_units))
+            "pdv_state": torch.FloatTensor(self.get_state(units=pdv_units)),
+            "board_dict": self._board.units,
+            "to_play": self.to_play()
         }
         if self.is_log_win:
             info["is_win"] = GameResults.Win if done else GameResults.Draw if truncated else GameResults.Continue
 
         return state, reward, done, truncated, info
-
-    # def is_win(self):
-    #    self._board.get_alive()
 
     def _get_dones(self):
         local_dones = torch.full(size=[self.cfg.num_agents], fill_value=True, dtype=torch.bool)
@@ -162,7 +160,7 @@ class MABattleEnv(gym.Env):
             state[:, pos[0], pos[1]] = -1
 
         if self.flatten_observations:
-            state = np.reshape(state, shape=[self.cfg.num_agents, self.cfg.board_size[0] * self.cfg.board_size[1]])
+            state = np.reshape(state, newshape=[self.cfg.num_agents, self.cfg.board_size[0] * self.cfg.board_size[1]])
 
         return state
 

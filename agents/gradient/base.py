@@ -1,7 +1,7 @@
 import datetime
 import os
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from copy import deepcopy
 
 import torch
@@ -10,18 +10,14 @@ from torch.optim import AdamW, Adam, RMSprop
 
 from MABattle.utils import play_game
 from agents.base import BaseAgent
-from rl.buffer import ReplayBuffer
-from utils import RandomAgent, avg
+from buffer import ReplayBuffer
+from utils import RandomAgent, avg, save_json
 from net import MAFCQNoisyNet
 
 
 class BaseGradientAgent(BaseAgent):
     def __init__(self, cfg: dataclass, env_cfg: dataclass, use_pdv_buffer: bool = False):
         super().__init__(cfg, env_cfg)
-
-        gradient_model_dir = os.path.join(self.root_dir, "Models/gradient")
-        if not os.path.isdir(gradient_model_dir):
-            os.makedirs(gradient_model_dir)
 
         if self.cfg.optimizer_name == "Adam":
             self.optimizer_cls = lambda p, lr: Adam(p, lr=lr, amsgrad=True)
@@ -35,9 +31,7 @@ class BaseGradientAgent(BaseAgent):
         if self.cfg.opponent_type == "Random":
             self.opponent_cls = lambda: RandomAgent(self.env_cfg.num_agents)
         elif self.opponent_cls == "Greedy":
-            self.opponent_cls = ...  # GreedyAgent
-        elif self.cfg.opponent_type == "Self-play":
-            self.opponent_cls = ...
+            raise NotImplementedError("This type of opponent is not implemented")
         else:
             raise ValueError("Invalid opponent type")
 
@@ -57,21 +51,13 @@ class BaseGradientAgent(BaseAgent):
         self.model_target_twin = deepcopy(self.model_twin)
 
         self.model_optimizer = self.optimizer_cls(self.model.parameters(), self.cfg.lr)
-        self.model_optimizer_twin = self.optimizer_cls(self.model.parameters(), self.cfg.lr)
+        self.model_optimizer_twin = self.optimizer_cls(self.model_twin.parameters(), self.cfg.lr)
 
         self.buffer = ReplayBuffer(alpha=self.cfg.init_alpha, size=self.cfg.buffer_size, num_agents=self.env_cfg.num_agents,
                                    flatten_state_shape=self.env_cfg.flatten_state_shape, batch_size=self.cfg.batch_size,
                                    device=self.cfg.device, is_pdv=use_pdv_buffer)
 
         self.gamma_2 = self.gamma ** 2
-        # self.gamma = 0.99
-
-        # self.tau = 0.0001
-        # self.target_update_freq = 1024
-
-        # self.num_epoch_steps = 1
-        # self.num_step_game = 32
-        # self.num_step_train = 16
 
     def train_epoch(self) -> dict:
         metrics = {}
@@ -142,15 +128,24 @@ class BaseGradientAgent(BaseAgent):
         for metric in metrics.items():
             self.writer.add_scalar(*metric, epoch)
 
-        if epoch % 5 == 0:
+        if epoch % 500 == 0:
             state = {'info': "NNE-V1",  # описание
                      'date': datetime.datetime.now(),  # дата и время
                      'epochs': epoch,
                      'agent': "gradient",
-                     'model': self.model,
+                     'model': self.model.state_dict(),
                      }
-            str_dir = os.path.join(self.root_dir, f'Models/gradient/{self.cfg.name}.pt')
+            str_dir = os.path.join(self.root_dir, f'Models/gradient/{self.cfg.name}_{epoch}.pt')
             torch.save(state, str_dir)
+
+    def train(self, epochs: int):
+        save_json(asdict(self.cfg), os.path.join(self.root_dir, "gradient_config.json"))
+
+        gradient_model_dir = os.path.join(self.root_dir, "Models/gradient")
+        if not os.path.isdir(gradient_model_dir):
+            os.makedirs(gradient_model_dir)
+
+        super().train(epochs)
 
     @abstractmethod
     def _update_single_network(self, *args, **kwargs) -> tuple:

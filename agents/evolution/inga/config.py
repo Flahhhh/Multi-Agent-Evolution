@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 
 @dataclass
-class MERLCfg:
-    name: str = "MERL"
+class InGACfg:
+    name: str = "InGA"
+    model_type: str = "MAFCQNoisyNet"
+    fitness_type: str = "Random"
 
     num_processes: int = 8
+    population_size: int = 128
     elite_amount: int = 8
     num_relatives: int = 3
 

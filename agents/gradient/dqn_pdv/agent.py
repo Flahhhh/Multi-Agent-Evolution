@@ -7,6 +7,10 @@ from utils import avg
 
 
 class DQN_PDV(BaseGradientAgent):
+    """
+
+    """
+
     def __init__(self, cfg, env_cfg):
         super().__init__(cfg, env_cfg, use_pdv_buffer=True)
 

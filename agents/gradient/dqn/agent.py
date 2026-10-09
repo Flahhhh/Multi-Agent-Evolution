@@ -6,14 +6,12 @@ from utils import avg
 
 class DQN(BaseGradientAgent):
     def _update_single_network(self, agent_id, model, model_optimizer, model_target) -> tuple:
-        #ids, states, actions, rewards, finishes, post_rewards, pre_finishes, next_states = self.buffer.sample(agent_id)
         ids, states, actions, rewards, pre_finishes, post_rewards, finishes, next_states = self.buffer.sample(agent_id)
 
         next_actions = model(states).argmax(-1)
         next_q_values = torch.gather(model_target(states), index=next_actions.unsqueeze(-1), dim=-1).squeeze()
 
         q_values = torch.gather(model(states), index=actions.unsqueeze(-1), dim=-1).squeeze()
-        #q_targets = rewards + self.cfg.gamma*(1-finishes)*next_q_values.detach()
         q_targets = rewards + self.gamma * (1 - pre_finishes) * post_rewards + self.gamma_2 * (
                     1 - finishes) * next_q_values.detach()
 

@@ -17,3 +17,6 @@ class Unit:
 
     def get_possible_steps(self):
         return self._possible_steps
+
+    def __repr__(self):
+        return f"Unit_{self.idx}"

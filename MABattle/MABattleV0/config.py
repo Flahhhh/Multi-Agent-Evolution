@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
-import numpy as np
 
 
 @dataclass(frozen=True)
 class EnvCfg:
     board_size: tuple[int, int] = (4, 4)
     num_lines: int = 1
+    max_steps: int = 100
+
     win_reward: float = 0.0
     capture_reward: float = 10.0
 
@@ -25,7 +26,6 @@ class EnvCfg:
 
     action_space: ClassVar[int] = len(unit_possible_actions)
 
-    #board_shape: np.ndarray = field(init=False, repr=False)
     flatten_state_shape: int = field(init=False)
     obs_high: int = field(init=False)
     num_agents: int = field(init=False)
@@ -34,7 +34,6 @@ class EnvCfg:
     col_range: tuple[int, ...] = field(init=False)
 
     def __post_init__(self):
-        #super().__setattr__("board_shape", self.board_size)
         super().__setattr__("flatten_state_shape", self.board_size[0] * self.board_size[1])
         super().__setattr__("obs_high", self.board_size[1] * self.num_lines)
         super().__setattr__("num_agents", self.board_size[1] * self.num_lines)

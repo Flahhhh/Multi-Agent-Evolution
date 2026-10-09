@@ -3,8 +3,6 @@ from enum import Enum
 from .config import EnvCfg
 from .units import Unit
 
-import numpy as np
-
 
 class GameResults(Enum):
     Continue = 0.0
@@ -88,7 +86,6 @@ class Board:
 
         pos = unit.pos
         new_pos = (unit.pos[0] + self.cfg.unit_possible_actions[action][0], unit.pos[1] + self.cfg.unit_possible_actions[action][1])
-        #new_pos = unit.pos + self.cfg.unit_possible_actions[action]
 
         cur_units = self.units[self.turn]
         opp_units = self.units[-self.turn]
@@ -129,7 +126,6 @@ class Board:
             r.append(r_)
             if c_ is not None:
                 c.append(c_)
-            # r.append(self._apply_action(action, unit))
 
         d = self._get_done()
         pdv_units = self.units

@@ -1,5 +1,4 @@
 import gymnasium as gym
-from gymnasium.wrappers import TimeLimit
 
 gym.logger.min_level = 40
 gym.register(

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class DQN_PDVCfg:
     name: str = "DQN_PDV"
     target: str = "PDV"
-    multi_agent_mode: str = "Independent"  # Independent | Join | Decomposition
+    multi_agent_mode: str = "Decomposition"  # Independent | Join | Decomposition
     opponent_type: str = "Random"
     loss: str = "HuberLoss"
     loss_pdv: str = "HuberLoss"
@@ -30,8 +30,8 @@ class DQN_PDVCfg:
     target_update_freq: int = 256
 
     num_epoch_steps: int = 1
-    num_step_game: int = 8
-    num_step_train: int = 2
+    num_step_game: int = 1
+    num_step_train: int = 1
 
     exploration_strategy: str = "Noisy Networks"
     noisy_critic: bool = True
